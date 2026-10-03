@@ -14,6 +14,7 @@ import {
   PHONE_BR,
   PHONE_INTL,
   PHONE_LABEL,
+  PHONE_OF_SOMEONE_ELSE,
   RESUME_TITLE_PREFIX,
   ROLE_IN_SENTENCE,
   ROLE_LABEL,
@@ -81,8 +82,8 @@ export function findEmails(text) {
 
 /**
  * Telefones encontrados, do mais provável para o menos provável.
- * Pontuação: brasileiro (+3), linha com rótulo "Tel/Celular/WhatsApp" (+2), celular (+1).
- * Empate: vence o que aparece primeiro.
+ * Pontuação: brasileiro (+3), linha com rótulo "Tel/Celular/WhatsApp" (+2), celular (+1),
+ * linha de referência/recado (-3). Empate: vence o que aparece primeiro.
  */
 export function findPhones(lines) {
   const candidates = [];
@@ -91,6 +92,7 @@ export function findPhones(lines) {
     const text = line.text.replace(DOCUMENT_NUMBERS, ' ');
     const previous = lines[index - 1]?.text ?? '';
     const labeled = PHONE_LABEL.test(text) || (previous.length < 25 && PHONE_LABEL.test(previous));
+    const penalty = PHONE_OF_SOMEONE_ELSE.test(text) || PHONE_OF_SOMEONE_ELSE.test(previous) ? 3 : 0;
 
     for (const match of text.matchAll(PHONE_BR)) {
       const ddd = match[1] ?? match[2];
@@ -100,7 +102,7 @@ export function findPhones(lines) {
       const isMobile = number.length === 9;
       candidates.push({
         value: formatBrazilianPhone(ddd, number),
-        score: 3 + (labeled ? 2 : 0) + (isMobile ? 1 : 0),
+        score: 3 + (labeled ? 2 : 0) + (isMobile ? 1 : 0) - penalty,
         index,
       });
     }
@@ -108,7 +110,7 @@ export function findPhones(lines) {
     for (const [match] of text.matchAll(PHONE_INTL)) {
       const digits = match.replace(/\D/g, '').length;
       if (digits < 8 || digits > 15) continue;
-      candidates.push({ value: match.trim().replace(/\s+/g, ' '), score: labeled ? 2 : 0, index });
+      candidates.push({ value: match.trim().replace(/\s+/g, ' '), score: (labeled ? 2 : 0) - penalty, index });
     }
   });
 

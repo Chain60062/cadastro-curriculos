@@ -17,7 +17,9 @@ prisma
   .$connect()
   .then(() => console.log('Conectado ao SQL Server.'))
   .catch((error) => {
-    console.error('Não foi possível conectar ao SQL Server. Verifique DATABASE_URL no arquivo .env.');
+    console.error(
+      'Não foi possível conectar ao SQL Server. Verifique DATABASE_URL no .env e se o TCP/IP está habilitado na instância (README, seção 1).',
+    );
     console.error(error.message);
   });
 

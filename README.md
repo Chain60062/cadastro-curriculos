@@ -12,7 +12,7 @@ Depois de salvo, o candidato aparece na listagem (com busca) e tem uma tela de d
 | Camada   | Tecnologia                                                                                  |
 | -------- | ------------------------------------------------------------------------------------------- |
 | Runtime  | Node.js 22.13 ou superior (22 LTS ou 24 LTS), ES modules                                    |
-| Backend  | Express 5.2.1, Prisma ORM 6.19.3, Zod 4.6.5, Multer 2.4.0, pdfjs-dist 6.3.289               |
+| Backend  | Express 5.2.1, Prisma ORM 6.19.3, Zod 4.6.5, Multer 2.4.0, pdfjs-dist 6.3.289; testes com Vitest 5.0.3 |
 | Frontend | React 19.3.0, Vite 8.3.1, Tailwind CSS 4.3.3 (plugin `@tailwindcss/vite`)                   |
 | Banco    | SQL Server (Express ou superior)                                                            |
 
@@ -29,6 +29,7 @@ backend/
   src/schemas/candidate.schema.js   regras de validação (Zod), usadas nos dois tipos de cadastro
   src/middlewares/                  upload do PDF e tratamento de erros
   src/extraction/                   leitura do PDF (pdf.js) e extração com regex
+  tests/                            testes unitários (Vitest)
 frontend/
   src/pages/                        lista, novo cadastro e detalhes
   src/components/                   formulário, envio do PDF e alertas
@@ -72,7 +73,7 @@ A conexão fica em `DATABASE_URL`, no arquivo `.env`, no formato de URL do Prism
 | `Trusted_Connection=True`     | `integratedSecurity=true`            |
 | `TrustServerCertificate=True` | `trustServerCertificate=true`        |
 
-Exemplo: `DATABASE_URL="sqlserver://localhost\SQLEXPRESS;database=curriculos;integratedSecurity=true;trustServerCertificate=true"`. O `.env.example` traz também as variações com porta fixa e com usuário/senha do SQL Server.
+Exemplo: `DATABASE_URL="sqlserver://localhost:1433;database=curriculos;integratedSecurity=true;trustServerCertificate=true"`. O `.env.example` traz também as variações com instância nomeada e com usuário/senha do SQL Server.
 
 O script da estrutura está em `backend/prisma/migrations/20260930120000_init/migration.sql`. O `npm run db:migrate` (`prisma migrate deploy`) o aplica e registra a migration. Se preferir, o mesmo SQL pode ser executado manualmente no SSMS, dentro de um banco já criado.
 
@@ -120,13 +121,13 @@ As regras ficam só no backend (`candidate.schema.js`); o frontend exibe as mens
 1. O **pdf.js** lê o texto das até 10 primeiras páginas. Os pedaços de texto são agrupados em linhas, guardando o tamanho da fonte de cada uma.
 2. As expressões regulares ficam todas em `backend/src/extraction/patterns.js`:
    - **E-mail**: padrão `local@dominio.tld`, com correções para espaços em volta do `@` e texto grudado depois do domínio (`nome@gmail.comLinkedIn`).
-   - **Telefone**: formatos brasileiros com ou sem `+55`, DDD com ou sem parênteses, separados por espaço, ponto, hífen ou nada. O DDD é conferido contra a lista de DDDs existentes; celular = 9 + 8 dígitos, fixo = 2 a 5 + 7 dígitos. CPF/CNPJ são removidos antes da busca. Números em linhas com "Tel/Celular/WhatsApp" têm prioridade; os demais aparecem como "Também encontrado no PDF". Números internacionais são aceitos quando começam com `+`.
+   - **Telefone**: formatos brasileiros com ou sem `+55`, DDD com ou sem parênteses, separados por espaço, ponto, hífen ou nada. O DDD é conferido contra a lista de DDDs existentes; celular = 9 + 8 dígitos, fixo = 2 a 5 + 7 dígitos. CPF/CNPJ são removidos antes da busca. Números em linhas com "Tel/Celular/WhatsApp" têm prioridade e os de linhas de referência ou recado perdem prioridade; os demais aparecem como "Também encontrado no PDF". Números internacionais são aceitos quando começam com `+`.
    - **Nome**: primeiro procura um rótulo (`Nome: ...`). Se não houver, pontua as linhas do topo da 1ª página que têm "forma de nome" (2 a 6 palavras iniciadas por maiúscula, sem dígitos ou símbolos, sem palavras de seção, cargo ou endereço). A pontuação considera o tamanho da fonte, a posição e a semelhança com o e-mail.
    - **Área/cargo**: rótulos (`Objetivo:`, `Cargo pretendido:`), a seção "Objetivo" (inclusive frases como "Atuar como ..."), a linha de título logo abaixo do nome ou uma frase como "vaga de ..." no resumo.
    - **Resumo**: texto da seção "Resumo", "Sobre mim" ou "Perfil" até o próximo título de seção.
 3. O que não é encontrado volta como `null`. No formulário, os campos preenchidos pelo PDF ficam destacados até serem editados, e é possível ver o texto extraído.
 
-## Limitações
+## Limitações conhecidas
 
 - **PDF escaneado (imagem)** não tem texto para extrair e não há OCR. A aplicação avisa e o cadastro segue manual.
 - **Layouts em colunas ou tabelas** podem embaralhar a ordem das linhas e prejudicar a identificação do resumo e do cargo. E-mail e telefone são pouco afetados.
@@ -134,6 +135,25 @@ As regras ficam só no backend (`candidate.schema.js`); o frontend exibe as mens
 - **Telefone** é voltado ao padrão brasileiro. Celulares antigos com 8 dígitos (sem o 9) não são reconhecidos, e internacionais só com `+` e código do país.
 - **Cargo e resumo** dependem de títulos de seção conhecidos, em português ou inglês.
 - O PDF não é armazenado; só os dados do formulário são salvos.
+
+## Testes
+
+```bash
+cd backend
+npm test
+```
+
+Os testes usam o **Vitest** e não precisam de banco nem de arquivos PDF. Para acompanhar enquanto edita o código, use `npx vitest`. Ficam em `backend/tests/`:
+
+- `candidate.schema.test.js`: regras de validação do cadastro (dados válidos e normalização, campos obrigatórios, formato do e-mail).
+- `resume-extractor.test.js`: extração de e-mail, telefone e nome a partir de linhas de texto, o que **não** deve ser reconhecido como telefone (CPF, CEP, datas) e um currículo completo.
+
+O upload, a leitura do PDF e as rotas com banco não têm teste automatizado. Roteiro de verificação manual:
+
+- Cadastro manual válido; tentativa com campos vazios, e-mail inválido e e-mail repetido.
+- Cadastro com PDF: currículo com texto, arquivo que não é PDF, PDF acima de 5 MB, PDF protegido por senha, PDF escaneado. Após qualquer falha, o formulário continua utilizável.
+- Listagem, busca e tela de detalhes; detalhes de um id inexistente.
+- Backend desligado ou SQL Server inacessível: a interface mostra mensagem de erro.
 
 ## Problemas comuns
 

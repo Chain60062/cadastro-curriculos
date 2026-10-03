@@ -35,6 +35,9 @@ export const PHONE_INTL = /\+(?!\s?55)\d{1,3}(?:[\s.-]?\(?\d{1,5}\)?){2,5}(?![\d
 /** Rótulos que indicam que o número da linha é um telefone de contato. */
 export const PHONE_LABEL = /\b(?:tel(?:efone)?|fone|cel(?:ular)?|whats\s?app|whats|contato|phone|mobile)\b/i;
 
+/** Linhas que indicam telefone de outra pessoa (referência, recado, emergência): perdem prioridade. */
+export const PHONE_OF_SOMEONE_ELSE = /\b(?:refer[êe]ncias?|recados?|emerg[êe]ncia)\b/i;
+
 /** CPF, CNPJ, RG etc. são removidos antes de procurar telefones (um CPF tem 11 dígitos, como um celular). */
 export const DOCUMENT_NUMBERS =
   /\b(?:cpf|cnpj|rg|pis|cnh|ctps)\b[\s:nº°.#-]*[\d./-]{6,}|\d{3}\.\d{3}\.\d{3}-\d{2}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/gi;
@@ -100,7 +103,7 @@ export const NOT_NAME_WORDS = new Set(
 export const SECTION_HEADER = new RegExp(
   '^(?:' +
     [
-      'experi[êe]ncias?(?:\\s+profissionais?)?',
+      'experi[êe]ncias?(?:\\s+profissiona(?:l|is))?',
       'hist[óo]rico\\s+profissional',
       'forma[çc][ãa]o(?:\\s+acad[êe]mica)?',
       'educa[çc][ãa]o',

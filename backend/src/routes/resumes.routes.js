@@ -23,7 +23,7 @@ resumesRouter.post('/extract', uploadPdf, async (req, res) => {
   if (text.replace(/\s/g, '').length < 20) {
     throw new AppError(
       422,
-      'Não foi encontrado texto no PDF. Ele pode ser uma imagem digitalizada. Preencha o formulário manualmente.',
+      'Não encontramos texto no PDF. Ele pode ser uma imagem digitalizada. Preencha o formulário manualmente.',
     );
   }
 
