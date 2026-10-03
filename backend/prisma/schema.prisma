@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Candidate {
+  id          Int      @id @default(autoincrement())
+  fullName    String   @db.NVarChar(150)
+  email       String   @unique @db.NVarChar(254)
+  phone       String?  @db.NVarChar(30)
+  desiredRole String?  @db.NVarChar(120)
+  summary     String?  @db.NVarChar(4000)
+  /// "manual" ou "pdf": indica se o formulário foi pré-preenchido a partir de um currículo.
+  source      String   @default("manual") @db.VarChar(10)
+  createdAt   DateTime @default(now()) @db.DateTime2
+
+  @@index([createdAt])
+  @@map("Candidates")
+}
